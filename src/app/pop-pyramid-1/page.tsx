@@ -1,169 +1,339 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import _ from 'lodash';
+import React, { useState, useEffect, useRef } from 'react';
+import * as d3 from 'd3';
 
-const AnimatedScatterPlot = () => {
-  // Generate data points around a line of best fit: y = mx + b + noise
-  const generateDataAroundLine = (count, m, b, noiseLevel) => {
-    return _.times(count, (i) => {
-      // Generate x values spread across the range
-      const x = (i / count) * 800;
-      // Calculate the y value on the line plus some random noise
-      const y = m * x + b + (Math.random() - 0.5) * noiseLevel;
-      return { x, y };
-    });
-  };
+// Sample population data for multiple years
+const populationData = {
+  "2000": [
+    {age: "0-4", male: 10.5, female: 10.1},
+    {age: "5-9", male: 11.2, female: 10.8},
+    {age: "10-14", male: 11.5, female: 11.0},
+    {age: "15-19", male: 10.8, female: 10.3},
+    {age: "20-24", male: 9.5, female: 9.2},
+    {age: "25-29", male: 8.7, female: 8.5},
+    {age: "30-34", male: 8.2, female: 8.1},
+    {age: "35-39", male: 7.8, female: 7.7},
+    {age: "40-44", male: 7.2, female: 7.3},
+    {age: "45-49", male: 6.2, female: 6.4},
+    {age: "50-54", male: 5.2, female: 5.5},
+    {age: "55-59", male: 4.2, female: 4.6},
+    {age: "60-64", male: 3.2, female: 3.7},
+    {age: "65-69", male: 2.5, female: 3.1},
+    {age: "70-74", male: 1.8, female: 2.5},
+    {age: "75-79", male: 1.2, female: 1.8},
+    {age: "80+", male: 0.8, female: 1.6}
+  ],
+  "2010": [
+    {age: "0-4", male: 9.8, female: 9.4},
+    {age: "5-9", male: 10.2, female: 9.8},
+    {age: "10-14", male: 10.8, female: 10.3},
+    {age: "15-19", male: 11.2, female: 10.8},
+    {age: "20-24", male: 10.5, female: 10.0},
+    {age: "25-29", male: 9.6, female: 9.3},
+    {age: "30-34", male: 8.9, female: 8.7},
+    {age: "35-39", male: 8.3, female: 8.2},
+    {age: "40-44", male: 7.9, female: 7.8},
+    {age: "45-49", male: 7.4, female: 7.5},
+    {age: "50-54", male: 6.5, female: 6.8},
+    {age: "55-59", male: 5.5, female: 5.9},
+    {age: "60-64", male: 4.5, female: 5.0},
+    {age: "65-69", male: 3.5, female: 4.1},
+    {age: "70-74", male: 2.6, female: 3.3},
+    {age: "75-79", male: 1.9, female: 2.7},
+    {age: "80+", male: 1.4, female: 2.4}
+  ],
+  "2020": [
+    {age: "0-4", male: 8.9, female: 8.5},
+    {age: "5-9", male: 9.2, female: 8.8},
+    {age: "10-14", male: 9.7, female: 9.3},
+    {age: "15-19", male: 10.1, female: 9.7},
+    {age: "20-24", male: 10.5, female: 10.1},
+    {age: "25-29", male: 10.1, female: 9.8},
+    {age: "30-34", male: 9.5, female: 9.2},
+    {age: "35-39", male: 8.7, female: 8.5},
+    {age: "40-44", male: 8.1, female: 8.0},
+    {age: "45-49", male: 7.7, female: 7.6},
+    {age: "50-54", male: 7.2, female: 7.3},
+    {age: "55-59", male: 6.3, female: 6.6},
+    {age: "60-64", male: 5.3, female: 5.8},
+    {age: "65-69", male: 4.3, female: 4.9},
+    {age: "70-74", male: 3.3, female: 4.0},
+    {age: "75-79", male: 2.3, female: 3.1},
+    {age: "80+", male: 2.0, female: 3.4}
+  ],
+  "2030": [
+    {age: "0-4", male: 8.2, female: 7.8},
+    {age: "5-9", male: 8.5, female: 8.1},
+    {age: "10-14", male: 8.9, female: 8.5},
+    {age: "15-19", male: 9.3, female: 8.9},
+    {age: "20-24", male: 9.7, female: 9.3},
+    {age: "25-29", male: 10.1, female: 9.7},
+    {age: "30-34", male: 10.0, female: 9.6},
+    {age: "35-39", male: 9.4, female: 9.1},
+    {age: "40-44", male: 8.6, female: 8.4},
+    {age: "45-49", male: 8.0, female: 7.9},
+    {age: "50-54", male: 7.6, female: 7.5},
+    {age: "55-59", male: 7.1, female: 7.2},
+    {age: "60-64", male: 6.1, female: 6.5},
+    {age: "65-69", male: 5.2, female: 5.7},
+    {age: "70-74", male: 4.1, female: 4.8},
+    {age: "75-79", male: 3.1, female: 3.9},
+    {age: "80+", male: 2.8, female: 4.3}
+  ]
+};
 
-  // Generate two datasets with different lines of best fit
-  const generateDatasets = (count) => {
-    // First line: y = 0.5x + 100
-    const dataset1Points = generateDataAroundLine(count, 0.5, 100, 80);
-    
-    // Second line: y = -0.3x + 350
-    const dataset2Points = generateDataAroundLine(count, -0.3, 350, 80);
-    
-    // Calculate line of best fit parameters for visualization
-    const line1 = { m: 0.5, b: 100 };
-    const line2 = { m: -0.3, b: 350 };
-    
-    // Combine into data points with IDs and colors
-    return {
-      points: _.times(count, (i) => ({
-        id: i,
-        dataset1: dataset1Points[i],
-        dataset2: dataset2Points[i],
-        color: `hsl(${Math.random() * 360}, 80%, 60%)`,
-      })),
-      lines: {
-        line1,
-        line2
-      }
-    };
-  };
-
-  // Initialize data
-  const [data, setData] = useState(() => generateDatasets(50));
-  const [showingDataset1, setShowingDataset1] = useState(true);
+const PopulationPyramid = () => {
+  const [currentYear, setCurrentYear] = useState("2000");
+  // Removed isAnimating state since we're allowing animations to be interrupted
+  const svgRef = useRef();
+  const years = Object.keys(populationData).sort();
   
-  const toggleDataset = () => {
-    setShowingDataset1(!showingDataset1);
+  // Set dimensions
+  const margin = { top: 20, right: 40, bottom: 30, left: 40 };
+  const width = 700 - margin.left - margin.right;
+  const height = 500 - margin.top - margin.bottom;
+  
+  // Initialize the chart on first render
+  const initChart = () => {
+    const svg = d3.select(svgRef.current);
+    svg.selectAll("*").remove();
+    
+    const g = svg.append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+    
+    // Create the axes groups that will be updated
+    g.append("g")
+      .attr("class", "y-axis")
+      .attr("transform", `translate(${width / 2}, 0)`);
+    
+    g.append("g")
+      .attr("class", "x-axis-male")
+      .attr("transform", `translate(0, ${height})`);
+    
+    g.append("g")
+      .attr("class", "x-axis-female")
+      .attr("transform", `translate(${width / 2}, ${height})`);
+    
+    // Add static labels
+    g.append("text")
+      .attr("text-anchor", "middle")
+      .attr("x", width / 4)
+      .attr("y", height + margin.bottom)
+      .text("Male (%)");
+    
+    g.append("text")
+      .attr("text-anchor", "middle")
+      .attr("x", 3 * width / 4)
+      .attr("y", height + margin.bottom)
+      .text("Female (%)");
+    
+    // Add title that will be updated
+    g.append("text")
+      .attr("class", "chart-title")
+      .attr("text-anchor", "middle")
+      .attr("x", width / 2)
+      .attr("y", -5)
+      .attr("font-weight", "bold");
   };
-
-  // Calculate y values for line ends
-  const getLineCoordinates = (line) => {
-    const x1 = 0;
-    const y1 = line.b;
-    const x2 = 800;
-    const y2 = line.m * x2 + line.b;
-    return { x1, y1, x2, y2 };
+  
+  // Update the chart with new data
+  const drawPyramid = (year, animate = false) => {
+    const svg = d3.select(svgRef.current);
+    const g = svg.select("g");
+    
+    if (g.empty()) {
+      initChart();
+    }
+    
+    // X and Y scales
+    const x = d3.scaleLinear()
+      .domain([0, d3.max(populationData[year], d => Math.max(d.male, d.female)) * 1.1])
+      .range([0, width / 2]);
+    
+    const y = d3.scaleBand()
+      .domain(populationData[year].map(d => d.age))
+      .range([0, height])
+      .padding(0.1);
+    
+    // Update the axes
+    svg.select(".y-axis")
+      .transition()
+      .duration(animate ? 1000 : 0)
+      .call(d3.axisRight(y));
+    
+    svg.select(".x-axis-male")
+      .transition()
+      .duration(animate ? 1000 : 0)
+      .call(d3.axisBottom(x.copy().range([width / 2, 0])));
+    
+    svg.select(".x-axis-female")
+      .transition()
+      .duration(animate ? 1000 : 0)
+      .call(d3.axisBottom(x));
+    
+    // Update title
+    svg.select(".chart-title")
+      .text(`Population Pyramid - ${year}`);
+    
+    // Update male bars
+    const maleBars = g.selectAll(".male-bar")
+      .data(populationData[year]);
+    
+    // Enter new bars
+    maleBars.enter()
+      .append("rect")
+      .attr("class", "male-bar")
+      .attr("y", d => y(d.age))
+      .attr("height", y.bandwidth())
+      .attr("fill", "#77AADD")
+      .attr("x", width / 2)
+      .attr("width", 0)
+      .merge(maleBars)
+      .transition()
+      .duration(animate ? 1000 : 0)
+      .attr("x", d => width / 2 - x(d.male))
+      .attr("y", d => y(d.age))
+      .attr("height", y.bandwidth())
+      .attr("width", d => x(d.male));
+      
+    // Update female bars
+    const femaleBars = g.selectAll(".female-bar")
+      .data(populationData[year]);
+    
+    // Enter new bars
+    femaleBars.enter()
+      .append("rect")
+      .attr("class", "female-bar")
+      .attr("x", width / 2)
+      .attr("y", d => y(d.age))
+      .attr("height", y.bandwidth())
+      .attr("fill", "#DD7788")
+      .attr("width", 0)
+      .merge(femaleBars)
+      .transition()
+      .duration(animate ? 1000 : 0)
+      .attr("x", width / 2)
+      .attr("y", d => y(d.age))
+      .attr("height", y.bandwidth())
+      .attr("width", d => x(d.female));
+      
+    // Update male labels
+    const maleLabels = g.selectAll(".male-label")
+      .data(populationData[year]);
+      
+    // Enter new labels
+    maleLabels.enter()
+      .append("text")
+      .attr("class", "male-label")
+      .attr("text-anchor", "end")
+      .attr("font-size", "10px")
+      .merge(maleLabels)
+      .text(d => d.male)
+      .transition()
+      .duration(animate ? 1000 : 0)
+      .attr("x", d => width / 2 - x(d.male) + 5)
+      .attr("y", d => y(d.age) + y.bandwidth() / 2 + 4)
+      .attr("opacity", 1);
+      
+    // Update female labels
+    const femaleLabels = g.selectAll(".female-label")
+      .data(populationData[year]);
+      
+    // Enter new labels
+    femaleLabels.enter()
+      .append("text")
+      .attr("class", "female-label")
+      .attr("text-anchor", "start")
+      .attr("font-size", "10px")
+      .merge(femaleLabels)
+      .text(d => d.female)
+      .transition()
+      .duration(animate ? 1000 : 0)
+      .attr("x", d => width / 2 + x(d.female) - 5)
+      .attr("y", d => y(d.age) + y.bandwidth() / 2 + 4)
+      .attr("opacity", 1);
   };
-
-  const line1Coords = getLineCoordinates(data.lines.line1);
-  const line2Coords = getLineCoordinates(data.lines.line2);
-
-  // Current line coordinates based on which dataset is shown
-  const currentLine = showingDataset1 ? line1Coords : line2Coords;
-
+  
+  useEffect(() => {
+    initChart();
+    drawPyramid(currentYear);
+  }, []);
+  
+  const handleYearChange = (year) => {
+    // No longer checking isAnimating - we allow interrupting the animation
+    setCurrentYear(year);
+    drawPyramid(year, true);
+  };
+  
+  const handleNextYear = () => {
+    const currentIndex = years.indexOf(currentYear);
+    const nextIndex = (currentIndex + 1) % years.length;
+    handleYearChange(years[nextIndex]);
+  };
+  
+  const handlePrevYear = () => {
+    const currentIndex = years.indexOf(currentYear);
+    const prevIndex = (currentIndex - 1 + years.length) % years.length;
+    handleYearChange(years[prevIndex]);
+  };
+  
   return (
-    <div className="flex flex-col items-center w-full max-w-4xl mx-auto">
-      <div className="mb-4 text-xl font-bold">
-        Animated Scatter Plot - Dataset {showingDataset1 ? '1' : '2'}
-      </div>
-      
-      <button
-        onClick={toggleDataset}
-        className="px-4 py-2 mb-4 text-white bg-blue-500 rounded hover:bg-blue-600"
-      >
-        Toggle Dataset
-      </button>
-      
-      <div className="relative w-full h-96 border border-gray-300 bg-gray-50 rounded overflow-hidden">
-        {/* Axis lines */}
-        <div className="absolute left-10 top-0 h-full w-px bg-gray-300"></div>
-        <div className="absolute bottom-10 left-0 w-full h-px bg-gray-300"></div>
+    <div className="flex flex-col items-center p-4 bg-gray-50 rounded-lg shadow">
+      <div className="flex items-center justify-center w-full mb-4 space-x-4">
+        <button 
+          onClick={handlePrevYear}
+          className="px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
+        >
+          Previous
+        </button>
         
-        {/* Line of best fit - animated with a slight delay */}
-        <motion.svg className="absolute top-0 left-0 w-full h-full" style={{ overflow: 'visible' }}>
-          <motion.line
-            initial={{
-              x1: line1Coords.x1,
-              y1: line1Coords.y1,
-              x2: line1Coords.x2,
-              y2: line1Coords.y2,
-            }}
-            animate={{
-              x1: currentLine.x1,
-              y1: currentLine.y1,
-              x2: currentLine.x2,
-              y2: currentLine.y2,
-            }}
-            transition={{ 
-              type: "spring", 
-              stiffness: 70, 
-              damping: 15,
-              delay: 0.2 // Added delay so points move first
-            }}
-            stroke="#ff5555"
-            strokeWidth="2"
-            strokeDasharray="5,5"
-          />
-        </motion.svg>
-        
-        {/* Data points */}
-        {data.points.map((point) => (
-          <motion.div
-            key={point.id}
-            initial={{
-              x: showingDataset1 ? point.dataset1.x : point.dataset2.x,
-              y: showingDataset1 ? point.dataset1.y : point.dataset2.y,
-            }}
-            animate={{
-              x: showingDataset1 ? point.dataset1.x : point.dataset2.x,
-              y: showingDataset1 ? point.dataset1.y : point.dataset2.y,
-            }}
-            transition={{ 
-              type: "spring", 
-              stiffness: 100, 
-              damping: 15,
-              mass: 1,
-              delay: point.id * 0.005 // Reduced individual point delay for faster overall movement
-            }}
-            className="absolute w-4 h-4 rounded-full -translate-x-2 -translate-y-2"
-            style={{
-              backgroundColor: point.color,
-            }}
-          />
-        ))}
-        
-        {/* Legend for line of best fit */}
-        <div className="absolute top-4 right-4 p-2 bg-white border border-gray-200 rounded shadow-sm">
-          <div className="flex items-center">
-            <div className="w-4 h-px bg-red-400 mr-2" style={{ borderTop: '2px dashed #ff5555' }}></div>
-            <span className="text-xs">Line of Best Fit</span>
-          </div>
+        <div className="flex space-x-2">
+          {years.map(year => (
+            <button
+              key={year}
+              onClick={() => handleYearChange(year)}
+              disabled={year === currentYear}
+              className={`px-3 py-1 rounded ${
+                year === currentYear 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-200 hover:bg-gray-300'
+              }`}
+            >
+              {year}
+            </button>
+          ))}
         </div>
         
-        {/* Equation display */}
-        <div className="absolute top-12 right-4 p-2 bg-white border border-gray-200 rounded shadow-sm">
-          <span className="text-xs font-mono">
-            y = {showingDataset1 ? data.lines.line1.m : data.lines.line2.m}x + {showingDataset1 ? data.lines.line1.b : data.lines.line2.b}
-          </span>
-        </div>
-        
-        {/* Axis labels */}
-        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-sm text-gray-600">X Axis</div>
-        <div className="absolute top-1/2 left-2 transform -translate-y-1/2 text-sm text-gray-600" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>Y Axis</div>
+        <button 
+          onClick={handleNextYear}
+          className="px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
+        >
+          Next
+        </button>
       </div>
       
-      <div className="mt-4 text-sm text-gray-600">
-        Dataset 1: y = 0.5x + 100 (positive slope)
-        <br />
-        Dataset 2: y = -0.3x + 350 (negative slope)
+      <div className="overflow-auto">
+        <svg 
+          ref={svgRef} 
+          width={700} 
+          height={500}
+          className="bg-white"
+        ></svg>
+      </div>
+      
+      <div className="flex justify-center mt-4 space-x-4">
+        <div className="flex items-center">
+          <div className="w-4 h-4 mr-2 bg-blue-500"></div>
+          <span>Male</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-4 h-4 mr-2 bg-red-400"></div>
+          <span>Female</span>
+        </div>
       </div>
     </div>
   );
 };
 
-export default AnimatedScatterPlot;
+export default PopulationPyramid;
