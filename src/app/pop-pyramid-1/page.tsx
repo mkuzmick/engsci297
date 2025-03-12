@@ -1,27 +1,10 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import _ from 'lodash';
 
 const AnimatedScatterPlot = () => {
-  // Define the embed code as a string. This snippet can be adjusted as needed.
-  const embedCode = `<AnimatedScatterPlot />`;
-
-  // State to show copy feedback
-  const [copied, setCopied] = useState(false);
-
-  // Copy handler using the Clipboard API
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(embedCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error("Failed to copy embed code:", error);
-    }
-  };
-
   // Generate data points around a line of best fit: y = mx + b + noise
   const generateDataAroundLine = (count, m, b, noiseLevel) => {
     return _.times(count, (i) => {
@@ -41,7 +24,7 @@ const AnimatedScatterPlot = () => {
     // Second line: y = -0.3x + 350
     const dataset2Points = generateDataAroundLine(count, -0.3, 350, 80);
     
-    // Define the line parameters for visualization
+    // Calculate line of best fit parameters for visualization
     const line1 = { m: 0.5, b: 100 };
     const line2 = { m: -0.3, b: 350 };
     
@@ -89,20 +72,12 @@ const AnimatedScatterPlot = () => {
         Animated Scatter Plot - Dataset {showingDataset1 ? '1' : '2'}
       </div>
       
-      <div className="flex gap-2">
-        <button
-          onClick={toggleDataset}
-          className="px-4 py-2 mb-4 text-white bg-blue-500 rounded hover:bg-blue-600"
-        >
-          Toggle Dataset
-        </button>
-        <button
-          onClick={handleCopy}
-          className="px-4 py-2 mb-4 text-white bg-green-500 rounded hover:bg-green-600"
-        >
-          {copied ? "Copied!" : "Copy Embed Code"}
-        </button>
-      </div>
+      <button
+        onClick={toggleDataset}
+        className="px-4 py-2 mb-4 text-white bg-blue-500 rounded hover:bg-blue-600"
+      >
+        Toggle Dataset
+      </button>
       
       <div className="relative w-full h-96 border border-gray-300 bg-gray-50 rounded overflow-hidden">
         {/* Axis lines */}
